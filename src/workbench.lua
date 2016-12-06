@@ -196,7 +196,8 @@ function workbench.move(_, from_list, _, to_list, _, count)
 	return 0
 end
 
-function workbench.on_put(pos, listname, _, stack)
+-- Mynetest: log the on_metadata_inventory_put event
+function workbench.on_put(pos, listname, _, stack, player)
 	local inv = minetest.get_meta(pos):get_inventory()
 	if listname == "input" then
 		local input = inv:get_stack("input", 1)
@@ -205,9 +206,14 @@ function workbench.on_put(pos, listname, _, stack)
 		local timer = minetest.get_node_timer(pos)
 		timer:start(3.0)
 	end
+	minetest.log("action",
+	             player:get_player_name() .. " puts " .. stack:to_string() ..
+	             " to xdecor:workbench->" .. listname .. " at " ..
+	             minetest.pos_to_string(pos))
 end
 
-function workbench.on_take(pos, listname, index, stack)
+-- Mynetest: log the on_metadata_inventory_take event
+function workbench.on_take(pos, listname, index, stack, player)
 	local inv = minetest.get_meta(pos):get_inventory()
 	local input = inv:get_stack("input", 1)
 
@@ -222,6 +228,10 @@ function workbench.on_take(pos, listname, index, stack)
 		inv:set_stack("input", 1, input)
 		workbench:get_output(inv, input, input:get_name())
 	end
+	minetest.log("action",
+	             player:get_player_name() .. " takes " .. stack:to_string() ..
+	             " from xdecor:workbench->" ..listname ..  " at " ..
+	             minetest.pos_to_string(pos))
 end
 
 xdecor.register("workbench", {
