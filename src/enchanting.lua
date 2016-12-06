@@ -74,7 +74,8 @@ function enchanting.formspec(pos, num)
 	meta:set_string("formspec", formspec)
 end
 
-function enchanting.on_put(pos, listname, _, stack)
+-- Mynetest: log the "on_metadata_inventory_put" event
+function enchanting.on_put(pos, listname, _, stack, player)
 	if listname == "tool" then
 		local stackname = stack:get_name()
 		local tool_groups = {
@@ -89,6 +90,10 @@ function enchanting.on_put(pos, listname, _, stack)
 			end
 		end
 	end
+	minetest.log("action",
+	             player:get_player_name() .. " puts " .. stack:to_string() ..
+	             " to xdecor:enchantment_table at " ..
+	             minetest.pos_to_string(pos))
 end
 
 function enchanting.fields(pos, _, fields, sender)
@@ -134,8 +139,13 @@ function enchanting.put(_, listname, _, stack)
 	return 0
 end
 
-function enchanting.on_take(pos, listname)
+-- Mynetest: log the "on_metadata_inventory_take" event
+function enchanting.on_take(pos, listname, _, stack, player)
 	if listname == "tool" then enchanting.formspec(pos, nil) end
+	minetest.log("action",
+	             player:get_player_name() .. " takes " .. stack:to_string() ..
+	             " from xdecor:enchantment_table at " ..
+	             minetest.pos_to_string(pos))
 end
 
 function enchanting.construct(pos)
