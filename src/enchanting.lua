@@ -19,6 +19,31 @@ local function to_percent(orig_value, final_value)
 	return abs(ceil(((final_value - orig_value) / orig_value) * 100))
 end
 
+local function has_enchanting_table_privilege(pos, player)
+	local meta = minetest.get_meta(pos)
+	local name = ""
+	if player then
+		if minetest.check_player_privs(player, "protection_bypass") then
+			return true
+		end
+		name = player:get_player_name()
+	end
+	local owner = meta:get_string("owner")
+	if not owner then -- Old enchanting table
+		-- Make the player the owner if he can interact in the area
+		if minetest.is_protected(pos, name) then
+			return false
+		else
+			meta:set_string("owner", name)
+			return true
+		end
+	end
+	if name ~= owner then
+		return false
+	end
+	return true
+end
+
 function enchanting:get_tooltip(enchant, orig_caps, fleshy)
 	local bonus = {durable=0, efficiency=0, damages=0}
 	if orig_caps then
@@ -129,7 +154,10 @@ local function allowed(tool)
 	return false
 end
 
-function enchanting.put(_, listname, _, stack)
+function enchanting.put(pos, listname, _, stack, player)
+	if not has_enchanting_table_privilege(pos, player) then
+		return 0
+	end
 	local stackname = stack:get_name()
 	if listname == "mese" and stackname == "default:mese_crystal" then
 		return stack:get_count()
@@ -137,6 +165,14 @@ function enchanting.put(_, listname, _, stack)
 		return 1
 	end
 	return 0
+end
+
+function enchanting.take(pos, _, _, stack, player)
+	if not has_enchanting_table_privilege(pos, player) then
+		return 0
+	else
+		return stack:get_count()
+	end
 end
 
 -- Mynetest: log the "on_metadata_inventory_take" event
@@ -150,7 +186,6 @@ end
 
 function enchanting.construct(pos)
 	local meta = minetest.get_meta(pos)
-	meta:set_string("infotext", "Enchantment Table")
 	enchanting.formspec(pos, nil)
 
 	local inv = meta:get_inventory()
@@ -160,6 +195,14 @@ function enchanting.construct(pos)
 	minetest.add_entity({x=pos.x, y=pos.y+0.85, z=pos.z}, "xdecor:book_open")
 	local timer = minetest.get_node_timer(pos)
 	timer:start(5.0)
+end
+
+function enchanting.after_place_node(pos, placer)
+	local name = placer:get_player_name()
+	local meta = minetest.get_meta(pos)
+	meta:set_string("owner", name)
+	meta:set_string("infotext", "Enchantment Table owned by " .. name)
+	return false
 end
 
 function enchanting.destruct(pos)
@@ -212,10 +255,12 @@ xdecor.register("enchantment_table", {
 	on_timer = enchanting.timer,
 	on_construct = enchanting.construct,
 	on_destruct = enchanting.destruct,
+	after_place_node = enchanting.after_place_node,
 	on_receive_fields = enchanting.fields,
 	on_metadata_inventory_put = enchanting.on_put,
 	on_metadata_inventory_take = enchanting.on_take,
 	allow_metadata_inventory_put = enchanting.put,
+	allow_metadata_inventory_take = enchanting.take,
 	allow_metadata_inventory_move = function() return 0 end
 })
 

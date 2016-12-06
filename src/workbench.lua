@@ -26,6 +26,31 @@ for node, def in pairs(minetest.registered_nodes) do
 	end
 end
 
+local function has_workbench_privilege(pos, player)
+	local meta = minetest.get_meta(pos)
+	local name = ""
+	if player then
+		if minetest.check_player_privs(player, "protection_bypass") then
+			return true
+		end
+		name = player:get_player_name()
+	end
+	local owner = meta:get_string("owner")
+	if not owner then -- Old workbench
+		-- Make the player the owner if he can interact in the area
+		if minetest.is_protected(pos, name) then
+			return false
+		else
+			meta:set_string("owner", name)
+			return true
+		end
+	end
+	if name ~= owner then
+		return false
+	end
+	return true
+end
+
 -- Optionally, you can register custom cuttable nodes in the workbench.
 workbench.custom_nodes_register = {
 	-- "default:leaves",
@@ -134,8 +159,15 @@ function workbench.construct(pos)
 	inv:set_size("forms", 4*3)
 	inv:set_size("storage", 8*2)
 
-	meta:set_string("infotext", "Work Bench")
 	workbench:set_formspec(meta, 1)
+end
+
+function workbench.after_place_node(pos, placer)
+	local name = placer:get_player_name()
+	local meta = minetest.get_meta(pos)
+	meta:set_string("owner", name)
+	meta:set_string("infotext", "Work Bench owned by " .. name)
+	return false
 end
 
 function workbench.fields(pos, _, fields)
@@ -170,7 +202,10 @@ function workbench.timer(pos)
 	return true
 end
 
-function workbench.put(_, listname, _, stack)
+function workbench.put(pos, listname, _, stack, player)
+	if not has_workbench_privilege(pos, player) then
+		return 0
+	end
 	local stackname = stack:get_name()
 	if (listname == "tool" and stack:get_wear() > 0 and
 	    workbench:repairable(stackname)) or
@@ -182,7 +217,10 @@ function workbench.put(_, listname, _, stack)
 	return 0
 end
 
-function workbench.take(_, listname, _, stack, player)
+function workbench.take(pos, listname, _, stack, player)
+	if not has_workbench_privilege(pos, player) then
+		return 0
+	end
 	if listname == "forms" then
 		local inv = player:get_inventory()
 		if inv:room_for_item("main", stack:get_name()) then return -1 end
@@ -191,7 +229,10 @@ function workbench.take(_, listname, _, stack, player)
 	return stack:get_count()
 end
 
-function workbench.move(_, from_list, _, to_list, _, count)
+function workbench.move(pos, from_list, _, to_list, _, count, player)
+	if not has_workbench_privilege(pos, player) then
+		return 0
+	end
 	if to_list == "storage" and from_list ~= "forms" then return count end
 	return 0
 end
@@ -245,6 +286,7 @@ xdecor.register("workbench", {
 	can_dig = workbench.dig,
 	on_timer = workbench.timer,
 	on_construct = workbench.construct,
+	after_place_node = workbench.after_place_node,
 	on_receive_fields = workbench.fields,
 	on_metadata_inventory_put = workbench.on_put,
 	on_metadata_inventory_take = workbench.on_take,
