@@ -329,19 +329,18 @@ function enchanting:register_tools(mod, def)
 			})
 		end
 
+		-- Mynetest: Adapt the code to the new 3d_armor API with armor_groups
 		if mod == "3d_armor" then
 			local original_armor_groups = original_tool.groups
-			local armorcaps = {}
+			local armorcaps = table.copy(original_armor_groups)
 			armorcaps.not_in_creative_inventory = 1
+			local protect_groups = table.copy(original_tool.armor_groups)
 
-			for armor_group, value in pairs(original_armor_groups) do
-				if enchant == "strong" then
-					armorcaps[armor_group] = ceil(value * enchanting.strength)
-				elseif enchant == "speed" then
-					armorcaps[armor_group] = value
-					armorcaps.physics_speed = enchanting.speed
-					armorcaps.physics_jump = enchanting.jump
-				end
+			if enchant == "strong" then
+				protect_groups.fleshy = ceil((protect_groups.fleshy or 0) * enchanting.strength)
+			elseif enchant == "speed" then
+				armorcaps.physics_speed = (armorcaps.physics_speed or 0) + enchanting.speed
+				armorcaps.physics_jump = (armorcaps.physics_jump or 0) + enchanting.jump
 			end
 
 			minetest.register_tool(":"..mod..":enchanted_"..tool.."_"..material.."_"..enchant, {
@@ -351,6 +350,8 @@ function enchanting:register_tools(mod, def)
 				texture = "3d_armor_"..tool.."_"..material,
 				wield_image = original_tool.wield_image,
 				groups = armorcaps,
+				armor_groups = protect_groups,
+				damage_groups = original_tool.damage_groups,
 				wear = 0
 			})
 		end
