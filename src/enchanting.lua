@@ -136,6 +136,12 @@ function enchanting.fields(pos, _, fields, sender)
 	local mod, name = tool:get_name():match("(.*):(.*)")
 	local enchanted_tool = (mod or "")..":enchanted_"..(name or "").."_"..next(fields)
 
+	-- Mynetest: check that the "mese" list actually contains mese.
+	if mese:get_name() ~= "default:mese_crystal" then
+		inv:set_stack("mese", 1, nil)
+		return
+	end
+
 	if mese:get_count() >= mese_cost and minetest.registered_tools[enchanted_tool] then
 		minetest.sound_play("xdecor_enchanting", {
 			to_player=sender:get_player_name(), gain=0.8})
@@ -379,4 +385,3 @@ enchanting:register_tools("3d_armor", {
 		leggings   = {enchants = "strong"}
 	}
 })
-

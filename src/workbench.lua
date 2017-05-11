@@ -182,6 +182,16 @@ end
 function workbench.fields(pos, _, fields)
 	if fields.quit then return end
 	local meta = minetest.get_meta(pos)
+	-- Mynetest: Fix crash and duplication bug. See https://github.com/Mynetest/Mynetest-server/issues/105
+	if fields.back then
+		local inv = minetest.get_meta(pos):get_inventory()
+		if inv:is_empty("input") then
+			inv:set_list("forms", {})
+		else
+			local input = inv:get_stack("input", 1)
+			workbench:get_output(inv, input, input:get_name())
+		end
+	end
 	workbench:set_formspec(meta, fields.back    and 1 or
 				     fields.craft   and 2 or
 				     fields.storage and 3)
@@ -198,6 +208,13 @@ function workbench.timer(pos)
 	local inv = minetest.get_meta(pos):get_inventory()
 	local tool = inv:get_stack("tool", 1)
 	local hammer = inv:get_stack("hammer", 1)
+
+	-- Mynetest: check that the item is a hammer. See https://github.com/Mynetest/Mynetest-server/issues/105
+	if hammer:get_name() ~= "xdecor:hammer" then
+		timer:stop()
+		inv:set_stack("hammer", 1, nil)
+		return
+	end
 
 	if tool:is_empty() or hammer:is_empty() or tool:get_wear() == 0 then
 		timer:stop()
